@@ -7,8 +7,40 @@ const path = require('path');
 
 // import the model
 
-const resume=require('../model/resume')
 
+
+const resume=require('../model/resume');
+const { count } = require('console');
+
+
+function extractEmail(text) {
+  const match = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-z]{2,}/);
+  return match ? match[0] : "";
+}
+
+function extractName(text){
+  const lines= text.split("\n").map(l=>l.trim()).filter(Boolean)
+  if(lines.length>0){
+    return lines[0].replace(/[^a-zA-Z ]/g, "").trim()
+  }
+  return "";
+}
+
+const skillKeywords=[
+  'Javascript', 'React', 'Node.js', 'MongoDB','Express.js', 'python', 'Django', 'Java', 'Spring','C','C++', 'HTML', 'CSS', 'Tailwind CSS', 'Bootstrap', 'Next.js','Automation', 'AWS', 'Azure', 'Google Cloud', 'Manual Testing', 'Jmeter', 'LoadRunner', 'Jira'
+];
+
+function extractSkills(text){
+  const found=[];
+
+  for (const skill of skillKeywords) {
+  const safeSkill = escapeRegex(skill);   // escape +, ., etc.
+  const regex = new RegExp("\\b" + safeSkill + "\\b", "i");
+  if (regex.test(text)) {
+    found.push(skill);
+  }
+}
+}
 
 function escapeRegex(text) {
   return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
@@ -24,20 +56,27 @@ function countOccurrences(text, keyword) {
 // Text extraction
 // Extract text from uploaded files
 const extractText = async (filePath) => {
-  const ext = path.extname(filePath).toLowerCase();
-  if (ext === ".pdf") {
-    const data = fs.readFileSync(filePath);
-    const parsed = await pdfParse(data);
-    return parsed.text || "";
-  } else if (ext === ".docx") {
-    const result = await mammoth.extractRawText({ path: filePath });
-    return result.value || "";
-  } else if (ext === ".txt") {
-    return fs.readFileSync(filePath, "utf8");
-  } else {
-    throw new Error("Unsupported file type: " + ext);
+  try {
+    const ext = path.extname(filePath).toLowerCase();
+
+    if (ext === ".pdf") {
+      const data = fs.readFileSync(filePath);
+      const parsed = await pdfParse(data);
+      return parsed.text || "";
+    } else if (ext === ".docx") {
+      const result = await mammoth.extractRawText({ path: filePath });
+      return result.value || "";
+    } else if (ext === ".txt") {
+      return fs.readFileSync(filePath, "utf8");
+    } else {
+      throw new Error("Unsupported file type: " + ext);
+    }
+  } catch (err) {
+    console.error(" Failed to extract text from:", filePath, "Error:", err.message);
+    return ""; // return empty string so it won’t crash
   }
 };
+
 
 // @desc Upload resume
 // @route POST /api/resumes/upload
@@ -68,7 +107,7 @@ exports.uploadResume = async (req, res) => {
 };
 
 // @desc Search resumes by keywords
-// @route GET /api/resumes/search?q=keyword1,keyword2
+
 exports.searchResumes = async (req, res) => {
   try {
     const q = req.query.q || "";
@@ -133,3 +172,49 @@ exports.searchResumes = async (req, res) => {
     res.status(500).json({ error: err.message || "Search failed" });
   }
 };
+
+exports.uploadMultipleResume=async(req, res)=>{
+  try{
+    const files=req.files;
+    if(!files || files.length ===0){
+      return res.status(400).json({error : "No file Uploaded" })
+    }
+    let savedDocs=[]
+
+   for (const file of files) {
+  const resumeText = await extractText(file.path);
+
+  // If text extraction failed, skip this file
+  if (!resumeText) {
+    console.warn("⚠️ Skipping file (could not extract text):", file.originalname);
+    continue;
+  }
+
+  const name = extractName(resumeText);
+  const email = extractEmail(resumeText);
+  const skills = extractSkills(resumeText);
+
+  const doc = new resume({
+    name,
+    email,
+    skills,
+    experience: "",
+    resumeText,
+    filePath: file.path,
+  });
+
+  await doc.save();
+  savedDocs.push(doc);
+}
+
+
+    res.json({
+      success:true,
+      count:savedDocs.length,
+      resume:savedDocs
+    })
+  }
+  catch (err) {
+    res.status(500).json({ error: err.message || "Upload multiple failed" });
+  }
+}

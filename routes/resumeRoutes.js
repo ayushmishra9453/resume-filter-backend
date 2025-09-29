@@ -5,6 +5,7 @@ const fs = require("fs");
 const {
   uploadResume,
   searchResumes,
+  uploadMultipleResume
 } = require("../controller/resumeController");
 
 const router = express.Router();
@@ -23,5 +24,5 @@ const upload = multer({ storage });
 // Routes
 router.post("/upload", upload.single("file"), uploadResume);
 router.get("/search", searchResumes);
-
+router.post('/uploadMultipleResume',upload.array("files", 20),uploadMultipleResume)
 module.exports = router;
