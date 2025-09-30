@@ -1,5 +1,5 @@
 const express = require('express');
-const pdfParse = require('pdf-parse');
+const pdfParse = require('pdf-parse-new');
 const mammoth = require('mammoth');
 const fs = require('fs');
 const path = require('path');
@@ -40,6 +40,7 @@ function extractSkills(text){
     found.push(skill);
   }
 }
+return found;
 }
 
 function escapeRegex(text) {
@@ -90,6 +91,9 @@ exports.uploadResume = async (req, res) => {
 
     const resumeText = await extractText(file.path);
 
+    console.log("resumeText =>",resumeText);
+    
+
     const doc = new resume({
       name,
       email,
@@ -121,8 +125,8 @@ exports.searchResumes = async (req, res) => {
       const r = new RegExp(escapeRegex(kw), "i");
       orQueries.push({ resumeText: { $regex: r } });
       orQueries.push({ skills: { $in: [r] } });
-      orQueries.push({ experience: { $regex: r } });
-      orQueries.push({ name: { $regex: r } });
+      // orQueries.push({ experience: { $regex: r } });
+      // orQueries.push({ name: { $regex: r } });
     }
 
     const candidates = await resume.find({ $or: orQueries }).limit(200).lean();
@@ -173,48 +177,51 @@ exports.searchResumes = async (req, res) => {
   }
 };
 
-exports.uploadMultipleResume=async(req, res)=>{
-  try{
-    const files=req.files;
-    if(!files || files.length ===0){
-      return res.status(400).json({error : "No file Uploaded" })
+exports.uploadMultipleResume = async (req, res) => {
+  try {
+    const files = req.files;
+    if (!files || files.length === 0) {
+      return res.status(400).json({ error: "No file Uploaded" });
     }
-    let savedDocs=[]
 
-   for (const file of files) {
-  const resumeText = await extractText(file.path);
+    let savedDocs = [];
+    let failedFiles = [];
 
-  // If text extraction failed, skip this file
-  if (!resumeText) {
-    console.warn("⚠️ Skipping file (could not extract text):", file.originalname);
-    continue;
-  }
+    for (const file of files) {
+      const resumeText = await extractText(file.path);
+  console.log("resumeText =>",resumeText);
+  
+      if (!resumeText) {
+        console.warn("⚠️ Skipping file:", file.originalname);
+        failedFiles.push(file.originalname);
+        continue;
+      }
 
-  const name = extractName(resumeText);
-  const email = extractEmail(resumeText);
-  const skills = extractSkills(resumeText);
+      const name = extractName(resumeText);
+      const email = extractEmail(resumeText);
+      const skills = extractSkills(resumeText);
 
-  const doc = new resume({
-    name,
-    email,
-    skills,
-    experience: "",
-    resumeText,
-    filePath: file.path,
-  });
+      const doc = new resume({
+        name,
+        email,
+        skills,
+        experience: "",
+        resumeText,
+        filePath: file.path,
+      });
 
-  await doc.save();
-  savedDocs.push(doc);
-}
-
+      await doc.save();
+      savedDocs.push(doc);
+    }
 
     res.json({
-      success:true,
-      count:savedDocs.length,
-      resume:savedDocs
-    })
-  }
-  catch (err) {
+      success: true,
+      savedCount: savedDocs.length,
+      failedCount: failedFiles.length,
+      failedFiles,
+      resumes: savedDocs,
+    });
+  } catch (err) {
     res.status(500).json({ error: err.message || "Upload multiple failed" });
   }
-}
+};
