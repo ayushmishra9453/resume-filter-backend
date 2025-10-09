@@ -53,6 +53,27 @@ function countOccurrences(text, keyword) {
   return matches ? matches.length : 0;
 }
 
+function extractExperience(text) {
+  if (!text) return "";
+
+  // Match patterns like:
+  // "5 years", "5+ years", "7 yrs", "Experience: 3 years"
+  const regex = /(\d+)\s*(\+)?\s*(years|year|yrs|yr)/i;
+  const match = text.match(regex);
+
+  if (match) {
+    return match[0]; // e.g. "5 years", "3+ yrs"
+  }
+
+  // fallback: look for keywords "experience" + number
+  const expRegex = /experience\s*[:\-]?\s*(\d+)\s*(years|year|yrs|yr)?/i;
+  const expMatch = text.match(expRegex);
+  if (expMatch) {
+    return expMatch[0];
+  }
+
+  return "";
+}
 
 // Text extraction
 // Extract text from uploaded files

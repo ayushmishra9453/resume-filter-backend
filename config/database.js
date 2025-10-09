@@ -6,7 +6,9 @@ const connectWithDB=()=>{
         // useNewUrlParser:true,
         // useUnifiedTopology:true
     })
-    .then(console.log('DB connected successfully'))
+    .then(()=>{
+        console.log('DB connected successfully')
+    })
     .catch( (error)=>{
          console.log("DB facing connection issue")
         console.log(error)
