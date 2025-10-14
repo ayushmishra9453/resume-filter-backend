@@ -11,7 +11,7 @@ const userSchema=new mongoose.Schema({
     },
     password:{
         type:String,
-        required:true
+        // required:true
     },
     password_otp:{
         type:{type:String},
@@ -21,7 +21,11 @@ const userSchema=new mongoose.Schema({
     },
     contact_number:{
         type:Number
-    }
+    },
+    provider: {
+         type: String,
+          default: "local"
+   }
 
 },{timestamps:true})
 module.exports=mongoose.model("User",userSchema)
