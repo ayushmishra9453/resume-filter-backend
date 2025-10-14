@@ -1,5 +1,6 @@
 const {generateToken} = require("../middlewares/auth");
 const User = require("../model/User");
+const userService = require("../service/userService")
 const bcrypt = require("bcrypt");
 exports.register = async (req, res, next) => {
   const { name, email, password, confirmPassword, contact_number } = req.body;
@@ -86,3 +87,24 @@ exports.logout=async(req,res,next)=>{
         status:true
     })
 }
+
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const response = await userService.sendResetEmail(email);
+    res.status(200).json({ message: response });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { newPassword } = req.body;
+    const response = await userService.resetPassword(token, newPassword);
+    res.status(200).json({ message: response });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+};
