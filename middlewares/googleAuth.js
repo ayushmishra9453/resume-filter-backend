@@ -1,5 +1,5 @@
 const User=require('../model/User')
-const generateToken=require('./auth')
+const {generateToken}=require('./auth')
 const googleAuth=async(req, res,next)=>{
   try{
   const findUser=await User.findOne({email:req.user?._json?.email})
@@ -7,7 +7,8 @@ const googleAuth=async(req, res,next)=>{
   if(!findUser){
     const newUser= new User({
      name:req.user?._json?.name,
-     email:req.user?._json?.email
+     email:req.user?._json?.email,
+     provider: "google"
     })
      savedUser=await newUser.save()
        
@@ -15,8 +16,8 @@ const googleAuth=async(req, res,next)=>{
   const accessToken=generateToken(findUser?findUser.email : savedUser.email)
   res.cookie("accessToken",accessToken,{
     httpOnly:true,
-    secure:true,
-    sameSite: "none",
+    secure: process.env.NODE_ENV === "production",
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
   })
   next();
   }

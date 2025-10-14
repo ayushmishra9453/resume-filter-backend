@@ -51,11 +51,19 @@ exports.login = async (req, res, next) => {
     }
 
     const accessToken = generateToken(findUser.email);
-    res.cookie("accessToken", accessToken, {
-      sameSite: "none",
-      httpOnly: true,
-      secure: true,
-    });
+    // res.cookie("accessToken", accessToken, {
+    //   sameSite: "none",
+    //   httpOnly: true,
+    //   secure: true,
+    // });
+
+    const isProduction = process.env.NODE_ENV === "production";
+
+res.cookie("accessToken", accessToken, {
+  httpOnly: true,
+  sameSite: isProduction ? "none" : "lax",
+  secure: isProduction,
+});
     res.status(200).json({message:'success',status:true})
   } catch (error) {
     next(error)
@@ -79,10 +87,31 @@ exports.getUser=async(req,res,next)=>{
 }
 
 exports.logout=async(req,res,next)=>{
-    res.clearCookie('connect.sid')
-    res.clearCookie('accessToken')
+    // res.clearCookie('connect.sid')
+    // res.clearCookie('accessToken',{
+    //   httpOnly: true,
+    //   sameSite: "none",
+    //   secure: true,
+    // })
+    // res.status(200).json({
+    //     message:'success',
+    //     status:true
+    // })
+
+    try {
+    const isProduction = process.env.NODE_ENV === "production";
+   res.clearCookie('connect.sid')
+    res.clearCookie("accessToken", {
+      httpOnly: true,
+      sameSite: isProduction ? "none" : "lax",
+      secure: isProduction,
+    });
+
     res.status(200).json({
-        message:'success',
-        status:true
-    })
+      message: "Logout successful",
+      status: true,
+    });
+  } catch (error) {
+    next(error);
+  }
 }
